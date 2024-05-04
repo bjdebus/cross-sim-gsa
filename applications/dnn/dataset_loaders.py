@@ -11,7 +11,9 @@ import _pickle as cPickle
 
 # Root directory for all datasets
 # This is relative to the inference or training directory, from which functions in this file will be called
-datasets_root = "../data/datasets/"
+# datasets_root = "../data/datasets/"
+datasets_root = "../../dep/data/datasets/"
+
 
 
 def load_dataset_inference(dataset, nstart_i, nend_i, calibration=False, subtract_pixel_mean=False, 
@@ -53,6 +55,11 @@ def load_dataset_inference(dataset, nstart_i, nend_i, calibration=False, subtrac
         if ntest_batch > 50000:
             raise ValueError("At most 50,000 test images can be used for ImageNet")
         (x_test, y_test) = load_imagenet(option=imagenet_preprocess,nstart=nstart_i,nend=nend_i,calibration=calibration)
+    elif dataset == "satellite":
+        if ntest_batch > 5000:
+            raise ValueError("At most 5,000 test images can be used for Satellite")
+        # datasets_root = "../../data/datasets/"
+        (x_test, y_test) = load_satellite(my_root="../../data/datasets/",nstart=nstart_i,nend=nend_i)
     else:
         raise ValueError("unknown dataset")
 
@@ -404,3 +411,26 @@ def load_imagenet(option, calibration=False, nstart=0,nend=9999):
             offset = 25000
         x_test = x_test[(nstart-offset):(nend-offset),:,:,:]
         return (x_test, y_test)
+
+def load_satellite(my_root=None,nstart=None,nend=None,amplitude_only=False):
+
+    path = my_root+'satellite/'
+
+    if amplitude_only:
+        X_test = np.load(path+"X_test_events.npy")
+        y_test = np.load(path+"y_test_events.npy")
+        X_test = X_test[nstart:nend,:,:]
+        y_test = y_test[nstart:nend]
+    else:
+        X_test = np.load(path+"X_test.npy")
+        y_test = np.load(path+"y_test.npy")
+
+        n_events = (nend - nstart)//2
+        n_nonevents = nend - nstart - n_events
+        images_events = np.arange(n_events)
+        images_nonevents = np.arange(n_nonevents) + 2500
+        images_list = np.concatenate((images_events,images_nonevents))
+        X_test = X_test[images_list,:,:]
+        y_test = y_test[images_list,:]
+
+    return (X_test, y_test)

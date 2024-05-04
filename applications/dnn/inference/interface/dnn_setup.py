@@ -164,6 +164,11 @@ def build_keras_model(model_name,show_model_summary=False):
         model_path = model_dir + "cifar10/cifar10_cnn_brelu.h5"
         keras_model = load_keras_model(model_path,custom_import=True)
 
+    ##### Satellite models
+    elif model_name == "chickenX1_SNRv3":
+        model_path = "../../pretrained_models/satellite/chickenX1_SNRv3.h5"
+        keras_model = load_keras_model(model_path)
+
     ###### ALL OTHER UN-NAMED MODELS
     # Try to use model_name as path directly
     elif model_name is not None:
@@ -395,7 +400,7 @@ def model_specific_parameters(config):
     ### Dataset normalization
     # To add new cases not listed here, add a corresponding if clause into the appropriate section
     # in inference_net.inference
-    if task == "imagenet":
+    if task == "imagenet" or task == "satellite":
         dataset_normalization = "none"
     elif task == "cifar10" or task == "cifar100":
         if model_name == "larq_cifar10":
@@ -479,6 +484,11 @@ def model_specific_parameters(config):
         positiveInputsOnly = [True for k in range(Nlayers_mvm)]
         positiveInputsOnly[0] = False
         memory_window = 6
+
+    elif model_name == "chickenX1_SNRv3":
+        positiveInputsOnly = [True for k in range(Nlayers_mvm)]
+        positiveInputsOnly[0] = False
+        memory_window = 1   
 
     else:
         # Use default values

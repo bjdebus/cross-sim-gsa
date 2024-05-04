@@ -36,7 +36,7 @@ def get_keras_metadata(model,debug_graph=False,task="imagenet"):
 
     def isMainLayerType(class_name):
         return class_name in ('Conv2D', 'DepthwiseConv2D', 'QuantConv2D','MaxPooling2D','AveragePooling2D',\
-            'GlobalAveragePooling2D','GlobalMaxPooling2D','Dense','QuantDense','Add','Concatenate','Quantize','Scale','Flatten')
+            'GlobalAveragePooling2D','GlobalMaxPooling2D','Dense','QuantDense','Add','Concatenate','Quantize','Scale','Permute','Flatten')
 
     # Search the network for the index of a named main layer or the main layer associated with a named supporting layer
     def searchForLayer(layerName,layerParams):
@@ -302,6 +302,24 @@ def get_keras_metadata(model,debug_graph=False,task="imagenet"):
                     if config_k['axis'] != -1 and config_k['axis'] != 3:
                         raise ValueError("Contatenation only supported along channel dimension")
             
+
+            #########################
+            ##       PERMUTE       ##
+            #########################            
+            elif class_name == 'Permute':
+                layerParams_k['type'] = 'permute'
+                layerParams_k['order'] = np.array(config_k['dims'])-1
+
+                # Find source layer
+                if 'inbound_nodes' in config[k]:
+                    input1 = config[k]['inbound_nodes'][0][0][0]
+                    k_src = searchForLayer(input1,layerParams)
+                else:
+                    k_src = len(layerParams)-1
+                layerParams_k['source'] = np.array([k_src])
+                layerParams_k['splitBeforeBN'] = ( (layerParams[k_src]['type'] == 'add') and ('add' in input1) )   
+
+
             #################################
             ##  NVIDIA INT4 CUSTOM LAYERS  ##
             #################################
@@ -543,6 +561,12 @@ def get_keras_metadata(model,debug_graph=False,task="imagenet"):
         elif layerParams[j]['type'] == 'flatten':
             if layerParams[j_src]['type'] in ("conv","pool","add"):
                 sizes[j] = (1,1,layerParams[j_src]['Nox']*layerParams[j_src]['Noy']*layerParams[j_src]['Noc'])
+            elif layerParams[j_src]['type'] == "permute":
+                j_src2 = layerParams[j_src]['source'][0]
+                if layerParams[j_src2]['type'] in ("conv","pool","add"):
+                    sizes[j] = (1,1,layerParams[j_src2]['Nox']*layerParams[j_src2]['Noy']*layerParams[j_src2]['Noc'])
+                elif layerParams[j_src2]['type'] == "dense":
+                    sizes[j] = (1,1,layerParams[j_src2]['units'])
             layerParams[j]['units'] = sizes[j][0]*sizes[j][1]*sizes[j][2]
 
 
@@ -554,6 +578,12 @@ def get_keras_metadata(model,debug_graph=False,task="imagenet"):
             if j != 0:
                 if layerParams[j_src]['type'] in ("conv","pool","add"):
                     sizes[j] = (1,1,layerParams[j_src]['Nox']*layerParams[j_src]['Noy']*layerParams[j_src]['Noc'])
+                elif layerParams[j_src]['type'] == "permute":
+                    j_src2 = layerParams[j_src]['source'][0]
+                    if layerParams[j_src2]['type'] in ("conv","pool","add"):
+                        sizes[j] = (1,1,layerParams[j_src2]['Nox']*layerParams[j_src2]['Noy']*layerParams[j_src2]['Noc'])
+                    elif layerParams[j_src2]['type'] == "dense":
+                        sizes[j] = (1,1,layerParams[j_src2]['units'])
                 else:
                     sizes[j] = (1,1,layerParams[j_src]['units'])
             else:
