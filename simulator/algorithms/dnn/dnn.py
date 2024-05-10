@@ -601,6 +601,13 @@ class DNN:
         return_network_output=False,
     ):
         """Perform a forward calculation on a single input."""
+
+        # BD 5/10/24: Begin Debugging
+        print("branch = ",branch)
+        debug_graph = True
+        print("Number of layers = %d"%(self.nlayer))
+        # BD 5/10/24: End Debugging
+
         if one < 0 or one >= self.ndata:
             error("Input index vector %d is out-of-bounds" % one)
         indata = self.indata
